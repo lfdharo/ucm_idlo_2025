@@ -31,7 +31,7 @@ class ModelFactory:
         logger.info(f"Creating model {model_name} on device {device}")
         
         if model_name == 'wavLM':
-            feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained("microsoft/wavlm-base-plus-sv").to(device)
+            feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained("microsoft/wavlm-base-plus-sv")
             model = WavLMForXVector.from_pretrained("microsoft/wavlm-base-plus-sv").to(device)
 
             

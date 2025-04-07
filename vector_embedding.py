@@ -133,6 +133,7 @@ def exctract_vector_embedding(audio_input: str, model_name: str, model: Optional
         signal, fs = librosa.load(audio_input, sr=44100)
         signal = librosa.resample(signal, orig_sr=fs, target_sr=16000)
         inputs = feature_extractor(signal, sampling_rate=16000, return_tensors="pt", padding=True)
+        inputs = {k: v.to(model.device) for k, v in inputs.items()}
         with torch.no_grad():
             vector_prediction = model(**inputs).embeddings
         vector_prediction = torch.nn.functional.normalize(vector_prediction, dim=-1).cpu()

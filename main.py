@@ -5,18 +5,24 @@
 # Identificación de Locutores - Máster Lingüística y Tecnologías - UCM/UPM.
 # """
 
+import torch
 from models import ModelFactory
 from data_augmentation import DataAugmentation
 from faiss_class import FaissClass
 from evaluation import evaluate_model, plot_roc_curve, find_optimal_threshold, show_confusion_matrix
 import os
 
-model_name = 'deepspeaker'
+model_name = 'wavLM'
 speaker_id = 'SPK1'
 
 
 # Load model
 model, feature_extractor = ModelFactory.create_model(model_name)
+
+if torch.cuda.is_available():
+    model.to('cuda')
+else:
+    model.to('cpu')
 
 # Initialize FAISS class
 faiss_class = FaissClass(model_name=model_name, model=model, feature_extractor=feature_extractor, threshold=0.5)
