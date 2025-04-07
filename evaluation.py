@@ -5,6 +5,16 @@ import os
 from typing import Dict, List, Tuple
 import logging
 
+# Configuración del logger
+logging.basicConfig(
+    level=logging.INFO,  # Nivel de registro (puedes cambiarlo a DEBUG si necesitas más detalles)
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # Formato del mensaje
+    handlers=[
+        logging.StreamHandler()  # Imprime los mensajes en la consola
+    ]
+)
+
+
 class EvaluationMetrics:
     def __init__(self, model_name: str, threshold: float = 0.6):
         """Initialize evaluation metrics class.
@@ -21,7 +31,18 @@ class EvaluationMetrics:
         self.fn = 0  # False Negatives
         self.total_pairs = 0
         self.logger = logging.getLogger("SpeakerVerificationLogger")
-        
+        # Crea un manejador para imprimir en la consola
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+
+        # Define el formato del mensaje
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(formatter)
+
+        # Agrega el manejador al logger
+        self.logger.addHandler(console_handler)
+
+
     def calculate_metrics(self) -> Dict[str, float]:
         """Calculate verification metrics based on current results.
         
@@ -113,7 +134,10 @@ def evaluate_model(model_name: str, test_dir: str,
                 
                 # Evaluate the pair
                 metrics.evaluate_pair(is_same_speaker, similarity_score)
-                
+                metrics.logger.info(f"Processing {file1} vs {file2}: "
+                                    f"Score={similarity_score:.4f}, "
+                                    f"Decision={'Same' if similarity_score >= threshold else 'Different'}")
+
                 # Log progress
                 if metrics.total_pairs % 100 == 0:
                     metrics.logger.info(f"Processed {metrics.total_pairs}/{total_pairs} pairs")
