@@ -5,16 +5,6 @@ import os
 from typing import Dict, List, Tuple
 import logging
 
-# Configuración del logger
-logging.basicConfig(
-    level=logging.INFO,  # Nivel de registro (puedes cambiarlo a DEBUG si necesitas más detalles)
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # Formato del mensaje
-    handlers=[
-        logging.StreamHandler()  # Imprime los mensajes en la consola
-    ]
-)
-
-
 class EvaluationMetrics:
     def __init__(self, model_name: str, threshold: float = 0.6):
         """Initialize evaluation metrics class.
@@ -30,17 +20,21 @@ class EvaluationMetrics:
         self.tn = 0  # True Negatives
         self.fn = 0  # False Negatives
         self.total_pairs = 0
-        self.logger = logging.getLogger("SpeakerVerificationLogger")
-        # Crea un manejador para imprimir en la consola
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-
-        # Define el formato del mensaje
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        console_handler.setFormatter(formatter)
-
-        # Agrega el manejador al logger
-        self.logger.addHandler(console_handler)
+        self.logger = logging.getLogger(__name__)
+        # self.logger.setLevel(logging.INFO)  # Set the level explicitly
+        
+        # # Only add handlers if none exist
+        # if not self.logger.handlers:
+        #     # Create a console handler
+        #     console_handler = logging.StreamHandler()
+        #     console_handler.setLevel(logging.INFO)
+            
+        #     # Define the format of the message
+        #     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        #     console_handler.setFormatter(formatter)
+            
+        #     # Add the handler to the logger
+        #     self.logger.addHandler(console_handler)
 
 
     def calculate_metrics(self) -> Dict[str, float]:
@@ -87,6 +81,53 @@ class EvaluationMetrics:
                 self.fp += 1
             else:
                 self.tn += 1
+
+def evaluate_model_faiss(model_name: str, test_dir: str,
+                   faiss_index: object = None,
+                   threshold: float = 0.6, batch_size: int = 32) -> Dict[str, float]:
+    """Evaluate a speaker verification model using FAISS.
+    
+    Args:
+        model_name (str): Name of the model to evaluate
+        test_dir (str): Directory containing test audio files
+        threshold (float): Similarity threshold for verification decisions
+        batch_size (int): Number of pairs to process in each batch
+        
+    Returns:
+        dict: Dictionary containing evaluation metrics
+    """
+    from models import ModelFactory
+    from vector_embedding import exctract_vector_embedding
+    from utils import find_files
+    
+    metrics = EvaluationMetrics(model_name, threshold)
+
+    # Get all test files
+    test_files = find_files(test_dir)
+    
+    # Process pairs in batches
+    for i in range(0, len(test_files), batch_size):
+        batch_files = test_files[i:i+batch_size]
+        for file1 in batch_files:
+            # Extract speaker IDs from filenames
+            spk1 = os.path.basename(file1).split('_')[0]
+          
+            result = faiss_index.verify_speaker(file1)
+            similarity_score = result['similarity_score']
+            matched_speaker = result['matched_speaker'].split('_')[0]
+            is_same_speaker = spk1 == matched_speaker            
+            # Evaluate the pair
+            metrics.evaluate_pair(is_same_speaker, similarity_score)
+            metrics.logger.info(f"Processing {file1}: "
+                                f"Score={similarity_score:.4f}, "
+                                f"Decision={'Same' if (similarity_score >= threshold and is_same_speaker == True) else 'Different'}")
+
+            # Log progress
+            if metrics.total_pairs % 100 == 0:
+                metrics.logger.info(f"Processed {metrics.total_pairs}/{len(test_files)} pairs")
+    
+    return metrics.calculate_metrics()
+
 
 def evaluate_model(model_name: str, test_dir: str,
                    model: object = None, feature_extractor: object = None,  
@@ -213,6 +254,72 @@ def plot_roc_curve(model_name: str, test_dir: str,
     plt.grid(True)
     plt.show()
 
+
+def plot_roc_curve_faiss(model_name: str, test_dir: str,
+                   faiss_index: object = None, 
+                   batch_size: int = 32) -> None:
+    """Plot ROC curve for a speaker verification model.
+    
+    Args:
+        model_name (str): Name of the model to evaluate
+        test_dir (str): Directory containing test audio files
+        batch_size (int): Number of pairs to process in each batch
+        model (object, optional): Preloaded model instance
+        feature_extractor (object, optional): Preloaded feature extractor instance        
+    """
+
+    from vector_embedding import exctract_vector_embedding
+    from models import ModelFactory
+    from utils import find_files
+  
+   
+    # Get all test files
+    test_files = find_files(test_dir)
+    total_pairs = len(test_files) * (len(test_files) - 1) // 2
+    
+    # Prepare data for ROC curve
+    y_true = []
+    y_scores = []
+    
+    # Process pairs in batches
+    for i in range(0, len(test_files), batch_size):
+        batch_files = test_files[i:i+batch_size]
+        for file1 in batch_files:
+            # Extract speaker IDs from filenames
+            spk1 = os.path.basename(file1).split('_')[0]
+          
+            result = faiss_index.verify_speaker(file1)
+            similarity_score = result['similarity_score']
+            matched_speaker = result['matched_speaker'].split('_')[0]
+            is_same_speaker = spk1 == matched_speaker   
+              
+            y_true.append(1 if is_same_speaker else 0)
+            y_scores.append(similarity_score)
+            
+            # Log progress
+            if len(y_true) % 100 == 0:
+                logging.info(f"Processed {len(y_true)}/{len(test_files)} pairs")
+    
+    # Calculate ROC curve
+    fpr, tpr, thresholds = roc_curve(y_true, y_scores)
+    roc_auc = auc(fpr, tpr)
+    
+    # Plot ROC curve
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'ROC Curve - {model_name}')
+    plt.legend(loc="lower right")
+    plt.grid(True)
+    plt.show()
+
+
+
+
 def find_optimal_threshold(model_name: str, test_dir: str, 
                            model: object = None, feature_extractor: object = None,
                            num_thresholds: int = 100, batch_size: int = 32) -> Tuple[float, Dict[str, float]]:
@@ -291,6 +398,82 @@ def find_optimal_threshold(model_name: str, test_dir: str,
     
     return best_threshold, best_metrics 
 
+
+def find_optimal_threshold_faiss(model_name: str, test_dir: str, 
+                           faiss_index: object = None,
+                           num_thresholds: int = 100, batch_size: int = 32) -> Tuple[float, Dict[str, float]]:
+    """Find the optimal threshold that maximizes F1 score.
+    
+    Args:
+        model_name (str): Name of the model to evaluate
+        test_dir (str): Directory containing test audio files
+        num_thresholds (int): Number of threshold points to evaluate
+        batch_size (int): Number of pairs to process in each batch
+        model (object, optional): Preloaded model instance
+        feature_extractor (object, optional): Preloaded feature extractor instance
+        
+    Returns:
+        tuple: (optimal_threshold, best_metrics)
+    """
+    from models import ModelFactory
+    from vector_embedding import exctract_vector_embedding
+    from utils import find_files
+    
+    
+    # Get all test files
+    test_files = find_files(test_dir)
+    total_pairs = len(test_files) * (len(test_files) - 1) // 2
+    
+    # Prepare data for threshold search
+    y_true = []
+    y_scores = []
+    
+    # Process pairs in batches
+    for i in range(0, len(test_files), batch_size):
+        batch_files = test_files[i:i+batch_size]
+        for file1 in batch_files:
+            # Extract speaker IDs from filenames
+            spk1 = os.path.basename(file1).split('_')[0]
+          
+            result = faiss_index.verify_speaker(file1)
+            similarity_score = result['similarity_score']
+            matched_speaker = result['matched_speaker'].split('_')[0]
+            is_same_speaker = spk1 == matched_speaker   
+              
+            y_true.append(1 if is_same_speaker else 0)
+            y_scores.append(similarity_score)
+            
+            # Log progress
+            if len(y_true) % 100 == 0:
+                logging.info(f"Processed {len(y_true)}/{len(test_files)} pairs")
+                
+   
+    # Find optimal threshold
+    best_f1 = 0
+    best_threshold = 0
+    best_metrics = {}
+    
+    for threshold in np.linspace(min(y_scores), max(y_scores), num_thresholds):
+        metrics = EvaluationMetrics(model_name, threshold)
+        for score, true_label in zip(y_scores, y_true):
+            metrics.evaluate_pair(true_label == 1, score)
+        
+        current_metrics = metrics.calculate_metrics()
+        if current_metrics['f1'] > best_f1:
+            best_f1 = current_metrics['f1']
+            best_threshold = threshold
+            best_metrics = current_metrics
+    
+    logging.info(f"Optimal threshold for {model_name}: {best_threshold:.4f}")
+    logging.info(f"Best metrics at optimal threshold:")
+    for metric, value in best_metrics.items():
+        logging.info(f"{metric}: {value:.4f}")
+    
+    return best_threshold, best_metrics 
+
+
+
+
 def show_confusion_matrix(model_name: str, test_dir: str,
                          model: object = None, feature_extractor: object = None,
                          threshold: int = 0.5, batch_size: int = 32) -> None:
@@ -342,6 +525,66 @@ def show_confusion_matrix(model_name: str, test_dir: str,
                 # Log progress
                 if len(y_true) % 100 == 0:
                     logging.info(f"Processed {len(y_true)}/{len(test_files)} pairs")
+    
+    # Create confusion matrix
+    cm = confusion_matrix(y_true, [1 if score >= threshold else 0 for score in y_scores])
+    
+    # Plot confusion matrix
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', cbar=False,
+                xticklabels=['Not Same Speaker', 'Same Speaker'],
+                yticklabels=['Not Same Speaker', 'Same Speaker'])
+    plt.title(f'Confusion Matrix - {model_name}')
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.show()
+    plt.close()
+
+
+def show_confusion_matrix_faiss(model_name: str, test_dir: str,
+                         faiss_index: object = None,
+                         threshold: int = 0.5, batch_size: int = 32) -> None:
+    """Show confusion matrix for a speaker verification model.
+    
+    Args:
+        model_name (str): Name of the model to evaluate
+        enrollment_dir (str): Directory containing enrollment audio files
+        test_dir (str): Directory containing test audio files
+        num_thresholds (int): Number of threshold points to evaluate
+        batch_size (int): Number of pairs to process in each batch
+    """
+    from sklearn.metrics import confusion_matrix
+    from models import ModelFactory
+    from vector_embedding import exctract_vector_embedding
+    from utils import find_files
+    import seaborn as sns
+    
+    
+    # Get all test files
+    test_files = find_files(test_dir)
+    
+    # Prepare data for confusion matrix
+    y_true = []
+    y_scores = []
+    
+    # Process pairs in batches
+    for i in range(0, len(test_files), batch_size):
+        batch_files = test_files[i:i+batch_size]
+        for file1 in batch_files:
+            # Extract speaker IDs from filenames
+            spk1 = os.path.basename(file1).split('_')[0]
+          
+            result = faiss_index.verify_speaker(file1)
+            similarity_score = result['similarity_score']
+            matched_speaker = result['matched_speaker'].split('_')[0]
+            is_same_speaker = spk1 == matched_speaker   
+              
+            y_true.append(1 if is_same_speaker else 0)
+            y_scores.append(similarity_score)
+            
+            # Log progress
+            if len(y_true) % 100 == 0:
+                logging.info(f"Processed {len(y_true)}/{len(test_files)} pairs")
     
     # Create confusion matrix
     cm = confusion_matrix(y_true, [1 if score >= threshold else 0 for score in y_scores])

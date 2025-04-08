@@ -54,8 +54,8 @@ class DataAugmentation:
         augmented_samples = self.augment_all_fnt(samples=signal, sample_rate=fs)
         sf.write(os.path.join(user_name, wav_file) + '_all.wav', augmented_samples, fs)
 
-    def augment_data(self, folder: str, type: str):
-        list_wav_files = find_files(os.path.join(self.main_path, folder))
+    def augment_data(self, folder: str, type: str, speaker: str = None):
+        list_wav_files = find_files(os.path.join(self.main_path, folder), speaker)
 
         for file in list_wav_files:
             if 'gaussian' in file or 'timeStretch' in file or \

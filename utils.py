@@ -3,8 +3,9 @@ import logging
 from glob import glob
 from typing import List
 from datetime import date
+from typing import List, Dict, Optional
 
-def find_files(directory: str, ext: str = "wav") -> List[str]:
+def find_files(directory: str, speaker: Optional[object] = None, ext: str = "wav") -> List[str]:
     """Find all files with given extension in directory recursively.
     
     Args:
@@ -14,7 +15,10 @@ def find_files(directory: str, ext: str = "wav") -> List[str]:
     Returns:
         List[str]: List of found file paths
     """
-    files = sorted(glob(directory + f"/**/*.{ext}", recursive=True))
+    if speaker is not None:
+        files = sorted(glob(directory + f"/**/{speaker}*.{ext}", recursive=True))
+    else:
+        files = sorted(glob(directory + f"/**/*.{ext}", recursive=True))
     logging.debug(f'find_files: {files}')
     return files
 

@@ -42,7 +42,7 @@ class FaissClass:
             raise ValueError(f"No audio files found in {enrollment_dir}")
             
         # Extract speaker IDs from filenames
-        self.speaker_ids = [f.split('/')[-1].split('_')[0] for f in self.audio_files]
+        self.speaker_ids = [f.split('/')[-1] for f in self.audio_files]
         
         # Initialize FAISS index
         # self.index = faiss.IndexFlatL2(len(self.audio_files))
@@ -116,6 +116,7 @@ class FaissClass:
             
         # Extract vector from test file
         # test_vector = self._extract_vector(test_file)
+        spk1 = os.path.basename(test_file).split('_')[0]
         test_vector = exctract_vector_embedding(test_file, self.model_name, self.model, self.feature_extractor)
         
         # Search for nearest neighbor
@@ -125,13 +126,13 @@ class FaissClass:
 
 
         # Get results
-        matched_speaker = self.speaker_ids[I[0][0]]
+        matched_speaker_file = self.speaker_ids[I[0][0]]
         similarity_score = D[0][0]
         
         result = {
-            'matched_speaker': matched_speaker,
+            'matched_speaker': matched_speaker_file,
             'similarity_score': similarity_score,
-            'is_match': similarity_score >= self.threshold
+            'is_match': similarity_score >= self.threshold and matched_speaker_file.split('_')[0] == spk1
         }
         
         self.logger.info(f"Verification result: {result}")
