@@ -34,7 +34,6 @@ class DataAugmentation:
         ])
 
     def augment_gaussianNoise(self, signal, fs, user_name, wav_file):
-        # Augment/transform/perturb the audio data
         augmented_samples = self.augment_gaussianNoise_fnt(samples=signal, sample_rate=fs)
         sf.write(os.path.join(user_name, wav_file) + '_gaussian.wav', augmented_samples, fs)
     
@@ -55,9 +54,10 @@ class DataAugmentation:
         sf.write(os.path.join(user_name, wav_file) + '_all.wav', augmented_samples, fs)
 
     def augment_data(self, folder: str, type: str, speaker: str = None):
-        list_wav_files = find_files(os.path.join(self.main_path, folder), speaker)
+        list_audio_files = find_files(os.path.join(self.main_path, folder), speaker, ext='wav')
 
-        for file in list_wav_files:
+        # Apply data augmentation to each detected audio files
+        for file in list_audio_files:
             if 'gaussian' in file or 'timeStretch' in file or \
             'pitchShift' in file or 'shift' in file or 'all' in file:
                 continue

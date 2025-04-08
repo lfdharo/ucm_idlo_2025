@@ -125,11 +125,7 @@ def exctract_vector_embedding(audio_input: str, model_name: str, model: Optional
     Returns:
         np.ndarray: Speaker embedding vector
     """
-    if model_name == 'deepspeaker':
-        mfcc = sample_from_mfcc(read_mfcc(audio_input, SAMPLE_RATE), NUM_FRAMES)
-        vector_prediction = model.rescnn.predict(np.expand_dims(mfcc, axis=0))
-
-    elif model_name == 'wavLM':
+    if model_name == 'wavLM':
         signal, fs = librosa.load(audio_input, sr=44100)
         signal = librosa.resample(signal, orig_sr=fs, target_sr=16000)
         inputs = feature_extractor(signal, sampling_rate=16000, return_tensors="pt", padding=True)
@@ -143,7 +139,7 @@ def exctract_vector_embedding(audio_input: str, model_name: str, model: Optional
         signal = torch.from_numpy(librosa.resample(signal, orig_sr=fs, target_sr=16000))
         vector_prediction = model.encode_batch(signal)[0].numpy()
 
-    elif model_name == 'whisper':
+    elif model_name == 'Whisper':
         MAX_INPUT_LENGTH = 16000 * 30
         signal, fs = librosa.load(audio_input, sr=44100)
         sample = librosa.resample(signal, orig_sr=fs, target_sr=16000)

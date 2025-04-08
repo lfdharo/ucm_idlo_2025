@@ -5,10 +5,8 @@ from typing import Optional
 from transformers import Wav2Vec2FeatureExtractor
 from transformers import WavLMForXVector
 from speechbrain.inference.speaker import EncoderClassifier
-from speechbrain.inference.encoders import WaveformEncoder
-from transformers import WhisperProcessor, WhisperModel
+from transformers import WhisperProcessor
 from vector_embedding import exctract_vector_embedding
-from deepspeaker import DeepSpeakerModel
 
 class ModelFactory:
     """Factory class to create and manage different speaker verification models."""
@@ -33,7 +31,6 @@ class ModelFactory:
         if model_name == 'wavLM':
             feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained("microsoft/wavlm-base-plus-sv")
             model = WavLMForXVector.from_pretrained("microsoft/wavlm-base-plus-sv").to(device)
-
             
         elif model_name == 'SpeechBrain':
             model = EncoderClassifier.from_hparams(
@@ -43,14 +40,10 @@ class ModelFactory:
             )
             feature_extractor = None
 
-        elif model_name == 'whisper':
+        elif model_name == 'Whisper':
             feature_extractor = None
             model = WhisperProcessor.from_pretrained("openai/whisper-tiny.en")
 
-        elif model_name == 'deepspeaker':
-            model = DeepSpeakerModel()
-            model.rescnn.load_weights("./ResCNN_triplet_training_checkpoint_265.h5")
-            feature_extractor = None
         else:
             raise ValueError(f"Unsupported model: {model_name}")
             

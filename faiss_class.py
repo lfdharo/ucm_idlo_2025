@@ -44,10 +44,6 @@ class FaissClass:
         # Extract speaker IDs from filenames
         self.speaker_ids = [f.split('/')[-1] for f in self.audio_files]
         
-        # Initialize FAISS index
-        # self.index = faiss.IndexFlatL2(len(self.audio_files))
-
-
         # Calculate the embeddings
         embeddings = None
         for audio_file in self.audio_files:
@@ -101,7 +97,6 @@ class FaissClass:
 
         self.logger.info(f"Index loaded from {index_file}")
 
-
     def verify_speaker(self, test_file: str) -> Dict:
         """Verify if a test audio file matches any enrolled speaker.
         
@@ -153,16 +148,3 @@ class FaissClass:
         I = [[I[0][i]] for i, d in enumerate(D[0]) if (d>=tl and d<=th)]
         D = [[d] for d in D[0] if (d>=tl and d<=th)]
         return D, I  # Return distances and items
-
-    # def _extract_vector(self, audio_file: str) -> np.ndarray:
-    #     """Extract speaker embedding vector from audio file.
-        
-    #     Args:
-    #         audio_file (str): Path to audio file
-            
-    #     Returns:
-    #         np.ndarray: Speaker embedding vector
-    #     """
-    #     # This method should be implemented based on the specific model being used
-    #     # For now, we'll raise NotImplementedError
-    #     raise NotImplementedError("Vector extraction method not implemented") 

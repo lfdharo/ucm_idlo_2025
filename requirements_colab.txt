@@ -1,0 +1,4 @@
+faiss-cpu>=1.7.0
+python_speech_features>=0.6
+speechbrain>=0.5.12
+audiomentations>=0.16.0
