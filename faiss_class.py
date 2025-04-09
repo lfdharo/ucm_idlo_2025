@@ -97,7 +97,7 @@ class FaissClass:
 
         self.logger.info(f"Index loaded from {index_file}")
 
-    def verify_speaker(self, test_file: str) -> Dict:
+    def verify_speaker(self, test_file: str, threshold: Optional[float] = 0.5) -> Dict:
         """Verify if a test audio file matches any enrolled speaker.
         
         Args:
@@ -120,15 +120,19 @@ class FaissClass:
             self.logger.info(f'Closest element found: {self.int2idx[str(r[0])]} with cosine distance {d[0]}')
 
 
-        # Get results
+        # Get results      
         matched_speaker_file = self.speaker_ids[I[0][0]]
         similarity_score = D[0][0]
-        
-        result = {
-            'matched_speaker': matched_speaker_file,
-            'similarity_score': similarity_score,
-            'is_match': similarity_score >= self.threshold and matched_speaker_file.split('_')[0] == spk1
-        }
+
+        if similarity_score < threshold:
+            self.logger.info(f"Speaker verification failed: {spk1} does not match {matched_speaker_file}")
+            return {'is_match': False, 'similarity_score': similarity_score, 'matched_speaker': matched_speaker_file}
+        else:
+            result = {
+                'matched_speaker': matched_speaker_file,
+                'similarity_score': similarity_score,
+                'is_match': similarity_score >= self.threshold and matched_speaker_file.split('_')[0] == spk1
+            }
         
         self.logger.info(f"Verification result: {result}")
         return result
@@ -138,6 +142,8 @@ class FaissClass:
         Args:
             query_vector (numpy array): Vector embedding to search for closer stored items
             num_results (int): Number of closer vectors to return.
+            tl (float): Lower threshold for distance filtering.
+            th (float): Upper threshold for distance filtering.
         Returns:
             D (:obj:`numpy.array` of `float`): Distance between retrieved results and query.
             I (:obj:`numpy.array` of `int`): ID of the retrieved items.

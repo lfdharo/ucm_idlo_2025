@@ -24,9 +24,12 @@ python3 -m venv venv_sre
 source venv_sre/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Install dependencies:
+3. Install dependencies depending if you are working local or in Google Colab:
 ```bash
-pip install -r requirements.txt
+pip install -r requirements_local.txt
+```
+```bash
+pip install -r requirements_colab.txt
 ```
 
 ## Project Structure
@@ -91,4 +94,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the APACHE License - see the LICENSE file for details. 
