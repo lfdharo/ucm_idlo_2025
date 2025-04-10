@@ -9,7 +9,7 @@ import logging
 from models import ModelFactory
 from data_augmentation import DataAugmentation
 from faiss_class import FaissClass
-from tts_option import create_tts_clone, create_tts
+from tts_option import TTSOption
 from evaluation import evaluate_model_faiss, \
                         plot_roc_curve_faiss, \
                         find_optimal_threshold_faiss, \
@@ -20,6 +20,7 @@ from evaluation import evaluate_model_faiss, \
 import os
 import argparse
 import sys
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO,

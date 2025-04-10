@@ -18,3 +18,13 @@ class TTSOption:
         # generate speech by cloning a voice using default settings
         self.tts.tts_to_file(text=message,
                 file_path=output_file_path)
+
+
+if __name__ == "__main__":
+    tts_option = TTSOption()
+    message = "Hola, ¿cómo estás?"
+    output_file_path = "output.wav"
+    tts_option.create_tts(message, output_file_path)
+    print(f"Generated speech saved to {output_file_path}")
+    output_file_path = "output2.wav"
+    tts_option.create_tts_clone(message, "./enrollment/SPK1/SPK1_0001.wav", "es", output_file_path)
