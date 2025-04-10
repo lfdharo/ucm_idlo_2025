@@ -11,3 +11,4 @@ jupyter>=1.0.0
 tensorflow>=2.6.0
 tensorflow_hub>=0.12.0
 audiomentations>=0.16.0
+TTS>=0.22
