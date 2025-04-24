@@ -1,0 +1,5 @@
+speechbrain
+faiss-cpu
+python_speech_features
+audiomentations
+coqui-tts
