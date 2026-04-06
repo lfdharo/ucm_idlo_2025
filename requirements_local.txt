@@ -1,10 +1,12 @@
 numpy
 spacy
-transformers
+transformers==5.0.0
 faiss-cpu
 python_speech_features
 speechbrain
 audiomentations
-coqui-tts
-torch==2.5.0
-torchaudio==2.5.0
+coqui-tts[codec]
+torch
+torchaudio
+seaborn
+coqui-tts[languages]

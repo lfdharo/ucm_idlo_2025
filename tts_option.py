@@ -1,6 +1,16 @@
 from TTS.api import TTS
 import torch
 
+# Monkey patch torch.load for PyTorch 2.6+ compatibility with older model checkpoints
+_original_torch_load = torch.load
+def torch_load_with_weights_only_false(*args, **kwargs):
+    """Wrapper for torch.load that defaults weights_only to False for backward compatibility."""
+    if 'weights_only' not in kwargs:
+        kwargs['weights_only'] = False
+    return _original_torch_load(*args, **kwargs)
+
+torch.load = torch_load_with_weights_only_false
+
 class TTSOption:
     def __init__(self):
         device = "cuda" if torch.cuda.is_available() else "cpu"

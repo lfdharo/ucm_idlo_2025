@@ -111,6 +111,7 @@ class FaissClass:
             
         # Extract vector from test file
         # test_vector = self._extract_vector(test_file)
+        self.logger.info(f"Extracting vector embedding for {test_file}")
         spk1 = os.path.basename(test_file).split('_')[0]
         test_vector = exctract_vector_embedding(test_file, self.model_name, self.model, self.feature_extractor)
         

@@ -1,6 +1,6 @@
 # """
 # AUTHOR: Luis F. D'Haro
-# DATE: Mar 20, 2025
+# DATE: Apr 07, 2026
 # PURPOSE: This script is intented to be used for the class: 
 # Identificación de Locutores - Máster Lingüística y Tecnologías - UCM/UPM.
 # """
@@ -51,8 +51,8 @@ path_to_enrollment = './enrollment/'
 path_to_test = './test/'
 
 # CHANGE when using your own dataset
-#path_to_enrollment = '/content/drive/MyDrive/UCM-UPM_IDLO_2025/enrollment/'
-#path_to_test = '/content/drive/MyDrive/UCM-UPM_IDLO_2025/test/'
+#path_to_enrollment = '/content/drive/MyDrive/UCM-UPM_IDLO_2026/enrollment/'
+#path_to_test = '/content/drive/MyDrive/UCM-UPM_IDLO_2026/test/'
 
 
 # Check if the enrollment and test directories exist

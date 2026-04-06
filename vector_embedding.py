@@ -2,9 +2,13 @@ import numpy as np
 import librosa
 import torch
 import logging
+import warnings
 from typing import Optional, Union
 from python_speech_features import fbank
 from random import choice
+
+# Suppress PyTorch deprecation warning about mismatched mask types in attention layer
+warnings.filterwarnings("ignore", message=".*mismatched key_padding_mask and attn_mask.*")
 
 # Constants
 SAMPLE_RATE = 16000  # The sampling frequency of the audio files
