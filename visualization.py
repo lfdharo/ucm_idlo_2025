@@ -198,7 +198,7 @@ class VisualizationTools:
         ax.hist(impostor_scores, bins=30, alpha=0.7, label='Impostor Pairs', color='#e74c3c', edgecolor='black')
         
         if threshold is not None:
-            ax.axvline(threshold, color='black', linestyle='--', linewidth=2, label=f'Threshold ({threshold:.2f})')
+            ax.axvline(threshold, color='black', linestyle='--', linewidth=2, label=f'Thr. ({threshold:.2f})')
         
         ax.set_xlabel('Similarity Score', fontsize=12, fontweight='bold')
         ax.set_ylabel('Frequency', fontsize=12, fontweight='bold')
