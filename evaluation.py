@@ -541,9 +541,10 @@ def analyze_speaker_performance(model_name: str, test_dir: str,
             if spk1 not in speaker_metrics:
                 speaker_metrics[spk1] = {
                     'total_samples': 0,
-                    'correct_verifications': 0,
-                    'false_rejections': 0,
-                    'false_acceptances': 0,
+                    'true_positives': 0,        # Genuine identified correctly
+                    'false_negatives': 0,       # Genuine not identified
+                    'false_positives': 0,       # Impostor incorrectly identified
+                    'true_negatives': 0,        # Impostor correctly rejected
                     'avg_similarity': 0.0
                 }
             
@@ -558,29 +559,57 @@ def analyze_speaker_performance(model_name: str, test_dir: str,
             
             if is_same_speaker:
                 if similarity_score >= threshold:
-                    speaker_metrics[spk1]['correct_verifications'] += 1
+                    speaker_metrics[spk1]['true_positives'] += 1
                 else:
-                    speaker_metrics[spk1]['false_rejections'] += 1
+                    speaker_metrics[spk1]['false_negatives'] += 1
             else:
                 if similarity_score >= threshold:
-                    speaker_metrics[spk1]['false_acceptances'] += 1
+                    speaker_metrics[spk1]['false_positives'] += 1
+                else:
+                    speaker_metrics[spk1]['true_negatives'] += 1
     
     # Calculate final metrics for each speaker
     for speaker in speaker_metrics:
         metrics = speaker_metrics[speaker]
-        metrics['avg_similarity'] /= metrics['total_samples']
-        metrics['verification_rate'] = metrics['correct_verifications'] / metrics['total_samples']
-        metrics['false_rejection_rate'] = metrics['false_rejections'] / metrics['total_samples']
-        metrics['false_acceptance_rate'] = metrics['false_acceptances'] / metrics['total_samples']
+        tp = metrics['true_positives']
+        fn = metrics['false_negatives']
+        fp = metrics['false_positives']
+        tn = metrics['true_negatives']
+        total = metrics['total_samples']
+        
+        metrics['avg_similarity'] /= max(total, 1)
+        
+        # Accuracy: (TP + TN) / Total
+        metrics['accuracy'] = (tp + tn) / total if total > 0 else 0
+        
+        # Precision: TP / (TP + FP)
+        metrics['precision'] = tp / (tp + fp) if (tp + fp) > 0 else 0
+        
+        # Recall (also called verification rate): TP / (TP + FN)
+        metrics['recall'] = tp / (tp + fn) if (tp + fn) > 0 else 0
+        
+        # F1 Score
+        f1_num = 2 * metrics['precision'] * metrics['recall']
+        f1_den = metrics['precision'] + metrics['recall']
+        metrics['f1_score'] = f1_num / f1_den if f1_den > 0 else 0
+        
+        # FRR: False Rejection Rate = FN / (FN + TP)
+        metrics['frr'] = fn / (fn + tp) if (fn + tp) > 0 else 0
+        
+        # FAR: False Acceptance Rate = FP / (FP + TN)
+        metrics['far'] = fp / (fp + tn) if (fp + tn) > 0 else 0
     
     # Log speaker-specific results
     logging.info("\nSpeaker-specific Performance Analysis:")
     for speaker, metrics in speaker_metrics.items():
         logging.info(f"\nSpeaker {speaker}:")
         logging.info(f"  Total Samples: {metrics['total_samples']}")
-        logging.info(f"  Verification Rate: {metrics['verification_rate']:.4f}")
-        logging.info(f"  False Rejection Rate: {metrics['false_rejection_rate']:.4f}")
-        logging.info(f"  False Acceptance Rate: {metrics['false_acceptance_rate']:.4f}")
+        logging.info(f"  Accuracy: {metrics['accuracy']:.4f}")
+        logging.info(f"  Precision: {metrics['precision']:.4f}")
+        logging.info(f"  Recall: {metrics['recall']:.4f}")
+        logging.info(f"  F1 Score: {metrics['f1_score']:.4f}")
+        logging.info(f"  FAR (False Acceptance Rate): {metrics['far']:.4f}")
+        logging.info(f"  FRR (False Rejection Rate): {metrics['frr']:.4f}")
         logging.info(f"  Average Similarity Score: {metrics['avg_similarity']:.4f}")
     
     return speaker_metrics

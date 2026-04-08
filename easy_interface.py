@@ -248,6 +248,140 @@ class SimpleSpeakerID:
         
         return sorted(list(speakers))
     
+    def calculate_eer(self) -> Tuple[float, float]:
+        """Calculate Equal Error Rate (EER) for the system.
+        
+        EER is the point where False Acceptance Rate (FAR) equals 
+        False Rejection Rate (FRR). Lower EER = better performance.
+        
+        Returns:
+            tuple: (eer_threshold, eer_value)
+                - eer_threshold: Threshold at which EER occurs
+                - eer_value: The EER value (0-1)
+        
+        Example:
+            >>> threshold, eer = system.calculate_eer()
+            >>> print(f"EER: {eer:.4f}")
+            >>> print(f"Threshold: {threshold:.4f}")
+        """
+        from evaluation import calculate_eer
+        from utils import find_files
+        
+        self.logger.info("Calculating EER...")
+        test_files = find_files(self.test_dir)
+        
+        y_true = []
+        y_scores = []
+        
+        for file_path in test_files:
+            spk1 = os.path.basename(file_path).split('_')[0]
+            result = self.faiss_engine.verify_speaker(file_path)
+            matched_speaker = result['matched_speaker'].split('_')[0]
+            
+            y_true.append(1 if spk1 == matched_speaker else 0)
+            y_scores.append(result['similarity_score'])
+        
+        eer_threshold, eer_value = calculate_eer(y_true, y_scores)
+        
+        self.logger.info(f"✓ EER: {eer_value:.4f} at threshold {eer_threshold:.4f}")
+        return eer_threshold, eer_value
+    
+    def plot_roc_curve(self, save_to: Optional[str] = None) -> None:
+        """Plot ROC curve (Receiver Operating Characteristic).
+        
+        Shows the trade-off between true positive rate and false positive rate
+        at different thresholds. Closer to top-left corner = better performance.
+        
+        Args:
+            save_to (str, optional): Path to save the figure
+        
+        Example:
+            >>> system.plot_roc_curve(save_to='results/roc.png')
+        """
+        from evaluation import plot_roc_curve_faiss
+        
+        self.logger.info("Plotting ROC curve...")
+        plot_roc_curve_faiss(self.model_name, self.test_dir, self.faiss_engine)
+        if save_to:
+            import matplotlib.pyplot as plt
+            plt.savefig(save_to, dpi=300, bbox_inches='tight')
+            self.logger.info(f"✓ ROC curve saved to {save_to}")
+    
+    def plot_det_curve(self, save_to: Optional[str] = None) -> None:
+        """Plot DET curve (Detection Error Tradeoff).
+        
+        Similar to ROC but uses logarithmic scales and plots FAR vs FRR.
+        Useful for forensic analysis applications where both false positives
+        and false negatives are important.
+        
+        Args:
+            save_to (str, optional): Path to save the figure
+        
+        Example:
+            >>> system.plot_det_curve(save_to='results/det.png')
+        """
+        from evaluation import plot_det_curve
+        
+        self.logger.info("Plotting DET curve...")
+        plot_det_curve(self.model_name, self.test_dir, self.faiss_engine)
+        if save_to:
+            import matplotlib.pyplot as plt
+            plt.savefig(save_to, dpi=300, bbox_inches='tight')
+            self.logger.info(f"✓ DET curve saved to {save_to}")
+    
+    def get_eer_metrics(self) -> Dict[str, float]:
+        """Get system metrics at the EER point.
+        
+        Returns:
+            dict: Metrics at EER threshold including:
+                - 'eer_threshold': Threshold at EER
+                - 'eer_value': The EER value
+                - 'far': False Acceptance Rate
+                - 'frr': False Rejection Rate
+        
+        Example:
+            >>> metrics = system.get_eer_metrics()
+            >>> print(f"EER threshold: {metrics['eer_threshold']:.4f}")
+        """
+        from evaluation import calculate_eer
+        from utils import find_files
+        
+        test_files = find_files(self.test_dir)
+        
+        y_true = []
+        y_scores = []
+        
+        for file_path in test_files:
+            spk1 = os.path.basename(file_path).split('_')[0]
+            result = self.faiss_engine.verify_speaker(file_path)
+            matched_speaker = result['matched_speaker'].split('_')[0]
+            
+            y_true.append(1 if spk1 == matched_speaker else 0)
+            y_scores.append(result['similarity_score'])
+        
+        eer_threshold, eer_value = calculate_eer(y_true, y_scores)
+        
+        # Calculate FAR and FRR at this threshold
+        import numpy as np
+        y_true = np.array(y_true)
+        y_scores = np.array(y_scores)
+        y_pred = (y_scores >= eer_threshold).astype(int)
+        
+        fp = np.sum((1 - y_true) * y_pred)
+        fn = np.sum(y_true * (1 - y_pred))
+        tn = np.sum((1 - y_true) * (1 - y_pred))
+        tp = np.sum(y_true * y_pred)
+        
+        far = fp / (fp + tn) if (fp + tn) > 0 else 0
+        frr = fn / (fn + tp) if (fn + tp) > 0 else 0
+        
+        return {
+            'eer_threshold': eer_threshold,
+            'eer_value': eer_value,
+            'far': far,
+            'frr': frr
+        }
+    
     def print_summary(self):
         """Print a summary of the current configuration."""
         print("\n" + "="*60)
