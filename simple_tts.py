@@ -98,7 +98,7 @@ class SimpleTTS:
                 "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
                 device_map=device,
                 dtype=torch.bfloat16,
-                attn_implementation="flash_attention_2" if device.startswith('cuda') else "sdpa",
+                # attn_implementation="flash_attention_2" if device.startswith('cuda') else "sdpa",
             )            
             return True
         except ImportError:
