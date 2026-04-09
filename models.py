@@ -6,7 +6,7 @@ from transformers import Wav2Vec2FeatureExtractor
 from transformers import WavLMForXVector
 from speechbrain.inference.speaker import EncoderClassifier
 from transformers import WhisperProcessor
-from vector_embedding import exctract_vector_embedding
+from vector_embedding import extract_vector_embedding
 
 class ModelFactory:
     """Factory class to create and manage different speaker verification models."""
@@ -63,4 +63,4 @@ class ModelFactory:
         Returns:
             np.ndarray: Speaker embedding vector
         """
-        return exctract_vector_embedding(audio_file, model, model_name, feature_extractor) 
+        return extract_vector_embedding(audio_file, model, model_name, feature_extractor) 

@@ -59,7 +59,7 @@ class SpecificSpeakerComparison:
             ... )
             >>> print(f"Closest match: {closest_file} (score: {score:.2%})")
         """
-        from vector_embedding import exctract_vector_embedding
+        from vector_embedding import extract_vector_embedding
         from models import ModelFactory
         
         model, feature_extractor = ModelFactory.create_model(self.model_name)
@@ -68,7 +68,7 @@ class SpecificSpeakerComparison:
         test_speaker = os.path.basename(test_file).split('_')[0]
         
         # Get test embedding
-        test_embedding = exctract_vector_embedding(
+        test_embedding = extract_vector_embedding(
             test_file, 
             self.model_name,
             model,
@@ -91,7 +91,7 @@ class SpecificSpeakerComparison:
                 enrollment_file = os.path.join(speaker_dir, filename)
                 
                 # Get enrollment embedding
-                enroll_embedding = exctract_vector_embedding(
+                enroll_embedding = extract_vector_embedding(
                     enrollment_file,
                     self.model_name,
                     model,

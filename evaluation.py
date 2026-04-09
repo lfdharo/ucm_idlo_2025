@@ -115,7 +115,7 @@ def evaluate_model_faiss(model_name: str, test_dir: str,
                 # Extract speaker IDs from filenames
                 spk1 = os.path.basename(file1).split('_')[0]
               
-                result = faiss_index.verify_speaker(file1)
+                result = faiss_index.verify_speaker(file1, threshold=threshold)
                 similarity_score = result['similarity_score']
                 matched_speaker = result['matched_speaker'].split('_')[0]
                 is_same_speaker = spk1 == matched_speaker            
@@ -208,7 +208,7 @@ def find_optimal_threshold_faiss(model_name: str, test_dir: str,
         tuple: (optimal_threshold, best_metrics)
     """
     from models import ModelFactory
-    from vector_embedding import exctract_vector_embedding
+    from vector_embedding import extract_vector_embedding
     from utils import find_files
         
     # Get all test files

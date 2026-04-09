@@ -116,7 +116,7 @@ def normalize_frames(m: np.ndarray, epsilon: float = 1e-12) -> np.ndarray:
     logging.debug(f'normalize_frames: {normalized_frames}')
     return normalized_frames
 
-def exctract_vector_embedding(audio_input: str, model_name: str, model: Optional[object] = None, 
+def extract_vector_embedding(audio_input: str, model_name: str, model: Optional[object] = None, 
                            feature_extractor: Optional[object] = None) -> np.ndarray:
     """Extract speaker embedding vector from audio file.
     
@@ -142,7 +142,8 @@ def exctract_vector_embedding(audio_input: str, model_name: str, model: Optional
         signal, fs = librosa.load(audio_input, sr=44100)
         signal = torch.from_numpy(librosa.resample(signal, orig_sr=fs, target_sr=16000))
         signal = signal.to(model.device)
-        vector_prediction = model.encode_batch(signal)[0].cpu().numpy()
+        output = model.encode_batch(signal)[0]
+        vector_prediction = output.detach().cpu().numpy()
 
     elif model_name == 'Whisper':
         MAX_INPUT_LENGTH = 16000 * 30

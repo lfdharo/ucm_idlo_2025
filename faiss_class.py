@@ -4,7 +4,7 @@ import logging
 import os
 from typing import List, Dict, Optional
 from utils import find_files, ensures_dir
-from vector_embedding import exctract_vector_embedding
+from vector_embedding import extract_vector_embedding
 from sklearn.preprocessing import normalize
 import pickle
 
@@ -48,7 +48,7 @@ class FaissClass:
         embeddings = None
         for audio_file in self.audio_files:
             # vector = self._extract_vector(audio_file)
-            vector = exctract_vector_embedding(audio_file, self.model_name, self.model, self.feature_extractor)
+            vector = extract_vector_embedding(audio_file, self.model_name, self.model, self.feature_extractor)
             if embeddings is None:
                 embeddings = vector
             else:
@@ -113,7 +113,7 @@ class FaissClass:
         # test_vector = self._extract_vector(test_file)
         self.logger.info(f"Extracting vector embedding for {test_file}")
         spk1 = os.path.basename(test_file).split('_')[0]
-        test_vector = exctract_vector_embedding(test_file, self.model_name, self.model, self.feature_extractor)
+        test_vector = extract_vector_embedding(test_file, self.model_name, self.model, self.feature_extractor)
         
         # Search for nearest neighbor
         D, I = self.vector_search(test_vector) # Distance and index id
@@ -132,7 +132,7 @@ class FaissClass:
             result = {
                 'matched_speaker': matched_speaker_file,
                 'similarity_score': similarity_score,
-                'is_match': similarity_score >= self.threshold and matched_speaker_file.split('_')[0] == spk1
+                'is_match': similarity_score >= threshold and matched_speaker_file.split('_')[0] == spk1
             }
         
         self.logger.info(f"Verification result: {result}")
