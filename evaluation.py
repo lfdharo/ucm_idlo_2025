@@ -105,7 +105,10 @@ def evaluate_model_faiss(model_name: str, test_dir: str,
 
     # Get all test files
     test_files = find_files(test_dir)
+    metrics.logger.info(f"Found {len(test_files)} test files in {test_dir}")
+    
     if not test_files:
+        metrics.logger.error(f"No audio files found in {test_dir}")
         raise ValueError(f"No audio files found in {test_dir}")
     
     # Process pairs in batches
@@ -134,6 +137,7 @@ def evaluate_model_faiss(model_name: str, test_dir: str,
                 metrics.logger.error(f"Error processing file {file1}: {str(e)}")
                 continue
     
+    metrics.logger.info(f"Completed evaluation: Processed {metrics.total_pairs} pairs")
     return metrics.calculate_metrics()
 
 def plot_roc_curve_faiss(model_name: str, test_dir: str,
