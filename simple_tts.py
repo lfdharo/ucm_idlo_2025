@@ -50,10 +50,11 @@ class SimpleTTS:
         }
         
         if self.backend == 'auto':
-            for name, check in [('espeak', backends_to_try['espeak']),
-                               ('pyttsx3', backends_to_try['pyttsx3']),
-                               ('mock', backends_to_try['mock']),
-                               ('qwen3tts', backends_to_try['qwen3tts'])]:
+            for name, check in [('qwen3tts', backends_to_try['qwen3tts']),   
+                                ('espeak', backends_to_try['espeak']),
+                                ('pyttsx3', backends_to_try['pyttsx3']),
+                                ('mock', backends_to_try['mock']),
+                               ]:
                 if check():
                     self.available_backend = name
                     self.logger.info(f"SimpleTTS using: {name}")

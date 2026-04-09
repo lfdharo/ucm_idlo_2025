@@ -685,15 +685,6 @@ def tts_spoofing_example(speaker_id='SPK1'):
     print("else:")
     print("    print('⚡ Moderate robustness')")
     print("```\n")
-
-    # Test against synthetic attempts")
-    system = SimpleSpeakerID(model_name='wavLM')
-    results = generator.evaluate_spoofing_robustness(
-    speaker_id_func=system.identify,
-    speaker_name='SPK1',
-    synthetic_dir='./synthetic_speakers/SPK1_SPOOFED/synthetic/',
-    enrollment_file='./enrollment/SPK1/SPK1_0001.wav')
-   
     print("="*70 + "\n")
 
 
