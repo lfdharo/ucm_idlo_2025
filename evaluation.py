@@ -42,7 +42,7 @@ class EvaluationMetrics:
         """Calculate verification metrics based on current results.
         
         Returns:
-            dict: Dictionary containing accuracy, precision, recall, and F1 score
+            dict: Dictionary containing accuracy, precision, recall, f1 score, and total_pairs
         """
         accuracy = (self.tp + self.tn) / self.total_pairs if self.total_pairs > 0 else 0
         precision = self.tp / (self.tp + self.fp) if (self.tp + self.fp) > 0 else 0
@@ -53,7 +53,8 @@ class EvaluationMetrics:
             'accuracy': accuracy,
             'precision': precision,
             'recall': recall,
-            'f1': f1
+            'f1': f1,
+            'total_pairs': self.total_pairs
         }
         
         self.logger.info(f"Metrics for {self.model_name} (threshold={self.threshold}):")
