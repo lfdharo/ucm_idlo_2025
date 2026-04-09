@@ -24,6 +24,7 @@ from attention_visualization import (
     AttentionVisualizer
 )
 from speaker_similarity_analysis import SpecificSpeakerComparison, compare_speakers
+from typing import Optional
 import logging
 
 # Reduce logging verbosity if you want a cleaner output
@@ -216,12 +217,15 @@ def advanced_metrics_example(model_name='wavLM'):
 
 
 def per_speaker_metrics_example(model_name='wavLM'):
-    """Example 8: Detailed per-speaker metrics"""
+    """Example 8: Detailed per-speaker metrics with manual and optimal threshold comparison"""
     print("\n" + "="*70)
     print("EXAMPLE 8: Per-Speaker Detailed Metrics")
     print("="*70 + "\n")
     
     system = SimpleSpeakerID(model_name=model_name, verbose=False)
+    
+    # Get manual threshold (current system setting)
+    manual_threshold = system.threshold
     
     print("Evaluating system on all test files...\n")
     metrics = system.evaluate()
@@ -250,11 +254,122 @@ def per_speaker_metrics_example(model_name='wavLM'):
         frr = perf.get('frr', 0)
         print(f"{speaker:<12} | {far:>13.4f} | {frr:>13.4f}")
     
-    print("-" * 60 + "\n")
+    print("-" * 60)
+    
+    # ============== THRESHOLD COMPARISON ============
+    print("\n\n" + "="*70)
+    print("THRESHOLD COMPARISON: Manual vs Optimal")
+    print("="*70)
+    
+    # Calculate optimal threshold (EER)
+    print("\nCalculating optimal threshold (EER - Equal Error Rate)...")
+    eer_threshold, eer_value = system.calculate_eer()
+    print(f"✓ Optimal EER threshold: {eer_threshold:.4f} (EER value: {eer_value:.4f})")
+    
+    # Get metrics at manual threshold
+    print(f"\nGetting metrics at MANUAL threshold ({manual_threshold:.4f})...")
+    manual_metrics = system.get_metrics_at_threshold(manual_threshold)
+    
+    # Get metrics at optimal threshold
+    print(f"Getting metrics at OPTIMAL threshold ({eer_threshold:.4f})...")
+    optimal_metrics = system.get_metrics_at_threshold(eer_threshold)
+    
+    # Display comparison
+    print("\n" + "="*90)
+    print(f"{'Metric':<20} | {'Manual Threshold':<20} | {'Optimal Threshold':<20} | {'Improvement':<15}")
+    print(f"{'':20} | {f'({manual_threshold:.4f})':20} | {f'({eer_threshold:.4f})':20} | {'':15}")
+    print("="*90)
+    
+    metrics_to_compare = [
+        ('FAR', 'far'),
+        ('FRR', 'frr'),
+        ('F1 Score', 'f1'),
+        ('Accuracy', 'accuracy'),
+        ('Precision', 'precision'),
+        ('Recall', 'recall'),
+        ('EER Value', 'far')  # Special case: EER is average of FAR and FRR
+    ]
+    
+    for display_name, metric_key in metrics_to_compare:
+        if metric_key == 'far' and display_name == 'EER Value':
+            # EER is the average of FAR and FRR
+            manual_val = (manual_metrics['far'] + manual_metrics['frr']) / 2
+            optimal_val = (optimal_metrics['far'] + optimal_metrics['frr']) / 2
+        else:
+            manual_val = manual_metrics[metric_key]
+            optimal_val = optimal_metrics[metric_key]
+        
+        # For FAR and FRR, lower is better; for F1, Accuracy, Precision, Recall, higher is better
+        if metric_key in ['far', 'frr']:
+            improvement = manual_val - optimal_val  # Positive means optimal is better
+            improvement_str = f"↓ {improvement:.4f}" if improvement > 0 else f"↑ {abs(improvement):.4f}"
+        else:
+            improvement = optimal_val - manual_val  # Positive means optimal is better
+            improvement_str = f"↑ {improvement:.4f}" if improvement > 0 else f"↓ {abs(improvement):.4f}"
+        
+        # Format based on metric type
+        if metric_key in ['far', 'frr']:
+            print(f"{display_name:<20} | {manual_val:>18.4f} | {optimal_val:>18.4f} | {improvement_str:>15}")
+        else:
+            print(f"{display_name:<20} | {manual_val:>18.2%} | {optimal_val:>18.2%} | {improvement_str:>15}")
+    
+    print("="*90)
+    
+    # Summary statistics
+    print("\n\nDETAILED CONFUSION MATRICES:")
+    print("-" * 70)
+    print(f"At MANUAL threshold ({manual_threshold:.4f}):")
+    print(f"  True Positives:  {manual_metrics['tp']:<4} | False Positives: {manual_metrics['fp']:<4}")
+    print(f"  False Negatives: {manual_metrics['fn']:<4} | True Negatives:  {manual_metrics['tn']:<4}")
+    
+    print(f"\nAt OPTIMAL threshold ({eer_threshold:.4f}):")
+    print(f"  True Positives:  {optimal_metrics['tp']:<4} | False Positives: {optimal_metrics['fp']:<4}")
+    print(f"  False Negatives: {optimal_metrics['fn']:<4} | True Negatives:  {optimal_metrics['tn']:<4}")
+    print("-" * 70 + "\n")
+
+
+def confusion_matrix_example(model_name='wavLM', threshold: Optional[float] = None):
+    """Example 9: Display confusion matrix for all test files
+    
+    A confusion matrix shows the distribution of:
+    - True Positives (TP): Correct matches
+    - True Negatives (TN): Correct rejections
+    - False Positives (FP): Incorrect matches (Type I error)
+    - False Negatives (FN): Incorrect rejections (Type II error)
+    
+    Useful for understanding the system's error distribution and trade-offs.
+    """
+    print("\n" + "="*70)
+    print("EXAMPLE 9: Confusion Matrix Visualization")
+    print("="*70 + "\n")
+    
+    system = SimpleSpeakerID(model_name=model_name, verbose=False)
+    
+    # Use provided threshold or system default
+    if threshold is None:
+        threshold = system.threshold
+        print(f"Using default system threshold: {threshold:.4f}\n")
+    else:
+        print(f"Using custom threshold: {threshold:.4f}\n")
+    
+    # Display confusion matrix at the specified threshold
+    print("Generating confusion matrix for all test files...\n")
+    system.display_confusion_matrix(
+        threshold=threshold,
+        save_to='results/confusion_matrix.png'
+    )
+    
+    print("\n✓ Confusion matrix displayed and saved to results/confusion_matrix.png")
+    print("\nInterpretation:")
+    print("  - Top-left (True Negatives): Correctly rejected non-matches")
+    print("  - Top-right (False Positives): Incorrectly accepted non-matches (security risk)")
+    print("  - Bottom-left (False Negatives): Incorrectly rejected matches (usability issue)")
+    print("  - Bottom-right (True Positives): Correctly accepted matches")
+    print("\n")
 
 
 def real_model_attention_example(model_name='wavLM', audio_file='./test/SPK1_A.wav'):
-    """Example 9: Visualize REAL attention weights from the model (not fallback).
+    """Example 10: Visualize REAL attention weights from the model (not fallback).
     
     Shows actual attention from the neural network during speaker identification.
     Demonstrates where the model "looks" in the audio.
@@ -266,7 +381,7 @@ def real_model_attention_example(model_name='wavLM', audio_file='./test/SPK1_A.w
     - xlsr: Multilingual option
     """
     print("\n" + "="*70)
-    print("EXAMPLE 9: Real Model Attention Visualization")
+    print("EXAMPLE 10: Real Model Attention Visualization")
     print("="*70 + "\n")
     
     print(f"Model: {model_name}")
@@ -296,7 +411,7 @@ def real_model_attention_example(model_name='wavLM', audio_file='./test/SPK1_A.w
 
 
 def speaker_similarity_comparison_example():
-    """Example 10: Compare two speakers and find similar spectral regions.
+    """Example 11: Compare two speakers and find similar spectral regions.
     
     For forensic analysis:
     - Finds the closest matching enrollment file for a test file
@@ -309,7 +424,7 @@ def speaker_similarity_comparison_example():
       * Recording environment
     """
     print("\n" + "="*70)
-    print("EXAMPLE 10: Speaker Similarity Analysis (Forensic Comparison)")
+    print("EXAMPLE 11: Speaker Similarity Analysis (Forensic Comparison)")
     print("="*70 + "\n")
     
     test_file = './test/SPK1_A.wav'
@@ -361,14 +476,14 @@ def speaker_similarity_comparison_example():
 
 def advanced_data_augmentation_example(speaker_id='SPK1'):
     """
-    Example 11: Advanced Data Augmentation
+    Example 12: Advanced Data Augmentation
     
     Demonstrates advanced audio augmentation techniques for creating 
     robust training data. These techniques simulate real-world acoustic
     variations that speakers encounter.
     """
     print("\n" + "="*70)
-    print("EXAMPLE 11: Advanced Data Augmentation")
+    print("EXAMPLE 12: Advanced Data Augmentation")
     print("="*70)
     print("Purpose: Create training data variations")
     print("  - Spectral masking (simulates hearing loss/low bandwidth)")
@@ -443,7 +558,7 @@ def advanced_data_augmentation_example(speaker_id='SPK1'):
 
 def tts_spoofing_example(speaker_id='SPK1'):
     """
-    Example 12: TTS-Based Spoofing Robustness Evaluation
+    Example 13: TTS-Based Spoofing Robustness Evaluation
     
     Demonstrates synthetic speech generation to evaluate if the speaker 
     identification system can detect when someone tries to spoof an enrolled 
@@ -456,20 +571,40 @@ def tts_spoofing_example(speaker_id='SPK1'):
 
     """
     print("\n" + "="*70)
-    print("EXAMPLE 12: TTS-Based Spoofing Robustness Evaluation")
+    print("EXAMPLE 13: TTS-Based Spoofing Robustness Evaluation")
     print("="*70)
     print("Purpose: Test if speaker ID is robust against synthetic speech")
-    print("Method: Generate synthetic speaker voice using TTS")
+    print("Method: Generate synthetic speaker voice using TTS\n")
     
     from tts_spoofing import TTSSpoofingGenerator
     from easy_interface import SimpleSpeakerID
     import os
     
-    # Initialize with SimpleTTS 
+    # Initialize with SimpleTTS with error handling
     print("Initializing TTS spoofing generator...")
-    generator = TTSSpoofingGenerator(model='qwen3tts', use_gpu=True)
-    print(f"✓ TTS backend: {generator.tts.available_backend}\n")
+    try:
+        # Use 'simple' backend (most reliable, uses espeak/pyttsx3)
+        generator = TTSSpoofingGenerator(model='simple', use_gpu=True)
+        if generator.tts is not None:
+            backend_name = getattr(generator.tts, 'available_backend', 'simple')
+            print(f"✓ TTS backend: {backend_name}\n")
+        else:
+            print("⚠ Warning: TTS not fully initialized, using fallback\n")
+    except Exception as e:
+        print(f"✗ TTS initialization error: {e}")
+        print("  Falling back to demonstration mode...\n")
+        generator = None
     
+    models_info = {
+        'simple': 'Mock/espeak (instant, ✓ recommended)',
+        'bark': 'HuggingFace Bark (good quality, requires GPU)',
+        'qwen3-mini': 'Lightweight version (requires GPU)',
+        'qwen3': 'Full version (best quality, 1.7B param, GPU only)'
+    }
+    
+    print("="*70)
+    print("1. AVAILABLE TTS BACKENDS:")
+    print("="*70)
     for model, desc in models_info.items():
         print(f"  {model:12} → {desc}")
     
@@ -592,19 +727,23 @@ if __name__ == "__main__":
     # Run Example 7: Advanced metrics (EER, DET, ROC curves)
     # advanced_metrics_example(model_name='wavLM')
     
-    # Run Example 8: Per-speaker detailed metrics
+    # Run Example 8: Per-speaker detailed metrics (with manual vs optimal threshold comparison)
     # per_speaker_metrics_example(model_name='wavLM')
+    
+    # Run Example 9: Confusion Matrix visualization
+    # Shows True Positives, True Negatives, False Positives, False Negatives
+    # confusion_matrix_example(model_name='wavLM', threshold=0.5)
     
     # ====================================================================
     # DNN-based Model Attention & Speaker Similarity Analysis
     # ====================================================================
     
-    # Run Example 9: Use Model Attention Weights to visualize which parts of the audio the model focuses on
+    # Run Example 10: Use Model Attention Weights to visualize which parts of the audio the model focuses on
     # Shows actual neural network attention, not fallback spectrogram
     # Supported models: 'wavLM', 'Whisper', 'unispeech', 'xlsr'
     # real_model_attention_example(model_name='wavLM', audio_file='./test/SPK1_A.wav')
     
-    # Run Example 10: SPEAKER SIMILARITY ANALYSIS
+    # Run Example 11: SPEAKER SIMILARITY ANALYSIS
     # For forensic analysis: compares two speakers and finds similar regions
     # speaker_similarity_comparison_example()
     
@@ -612,11 +751,11 @@ if __name__ == "__main__":
     # Advanced Data Augmentation & TTS Spoofing
     # ====================================================================
     
-    # Run Example 11: Advanced data augmentation
+    # Run Example 12: Advanced data augmentation
     # Demonstrates spectral masking, temporal masking, filtering, etc.
     # advanced_data_augmentation_example(speaker_id='SPK1')
     
-    # Run Example 12: TTS-based spoofing robustness evaluation
+    # Run Example 13: TTS-based spoofing robustness evaluation
     # Tests if system can detect voice cloning attacks
     # Note: Comment in to run (requires TTS models and may need GPU)
     tts_spoofing_example(speaker_id='SPK1')

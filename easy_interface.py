@@ -329,6 +329,40 @@ class SimpleSpeakerID:
             plt.savefig(save_to, dpi=300, bbox_inches='tight')
             self.logger.info(f"✓ DET curve saved to {save_to}")
     
+    def display_confusion_matrix(self, 
+                                threshold: Optional[float] = None,
+                                save_to: Optional[str] = None) -> None:
+        """Display confusion matrix for all test files.
+        
+        Shows the distribution of True Positives, True Negatives, 
+        False Positives, and False Negatives as a heatmap.
+        
+        Args:
+            threshold (float, optional): Decision threshold. Uses self.threshold if not provided
+            save_to (str, optional): Path to save the figure
+        
+        Example:
+            >>> system.display_confusion_matrix(threshold=0.5, save_to='results/confusion_matrix.png')
+        """
+        from evaluation import show_confusion_matrix_faiss
+        
+        if threshold is None:
+            threshold = self.threshold
+        
+        self.logger.info(f"Generating confusion matrix (threshold={threshold:.4f})...")
+        show_confusion_matrix_faiss(
+            model_name=self.model_name,
+            test_dir=self.test_dir,
+            faiss_index=self.faiss_engine,
+            threshold=threshold,
+            batch_size=5
+        )
+        
+        if save_to:
+            import matplotlib.pyplot as plt
+            plt.savefig(save_to, dpi=300, bbox_inches='tight')
+            self.logger.info(f"✓ Confusion matrix saved to {save_to}")
+    
     def get_eer_metrics(self) -> Dict[str, float]:
         """Get system metrics at the EER point.
         
@@ -380,6 +414,84 @@ class SimpleSpeakerID:
             'eer_value': eer_value,
             'far': far,
             'frr': frr
+        }
+    
+    def get_metrics_at_threshold(self, threshold: float) -> Dict[str, float]:
+        """Get comprehensive metrics (FAR, FRR, F1, Accuracy, Precision, Recall) at a specific threshold.
+        
+        Args:
+            threshold (float): Decision threshold (0-1)
+            
+        Returns:
+            dict: Comprehensive metrics at the given threshold
+                - 'threshold': The threshold used
+                - 'far': False Acceptance Rate
+                - 'frr': False Rejection Rate
+                - 'f1': F1 score
+                - 'accuracy': Overall accuracy
+                - 'precision': Precision
+                - 'recall': Recall
+                - 'tp': True positives
+                - 'fp': False positives
+                - 'tn': True negatives
+                - 'fn': False negatives
+        
+        Example:
+            >>> metrics = system.get_metrics_at_threshold(0.5)
+            >>> print(f"At threshold 0.5: FAR={metrics['far']:.4f}, FRR={metrics['frr']:.4f}")
+        """
+        from utils import find_files
+        import numpy as np
+        
+        if not 0 <= threshold <= 1:
+            raise ValueError("Threshold must be between 0 and 1")
+        
+        test_files = find_files(self.test_dir)
+        
+        y_true = []
+        y_scores = []
+        
+        for file_path in test_files:
+            spk1 = os.path.basename(file_path).split('_')[0]
+            result = self.faiss_engine.verify_speaker(file_path)
+            matched_speaker = result['matched_speaker'].split('_')[0]
+            
+            y_true.append(1 if spk1 == matched_speaker else 0)
+            y_scores.append(result['similarity_score'])
+        
+        # Convert to numpy arrays
+        y_true = np.array(y_true)
+        y_scores = np.array(y_scores)
+        y_pred = (y_scores >= threshold).astype(int)
+        
+        # Calculate confusion matrix elements
+        tp = np.sum(y_true * y_pred)
+        tn = np.sum((1 - y_true) * (1 - y_pred))
+        fp = np.sum((1 - y_true) * y_pred)
+        fn = np.sum(y_true * (1 - y_pred))
+        
+        # Calculate rates
+        far = fp / (fp + tn) if (fp + tn) > 0 else 0
+        frr = fn / (fn + tp) if (fn + tp) > 0 else 0
+        
+        # Calculate standard metrics
+        accuracy = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) > 0 else 0
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+        
+        return {
+            'threshold': threshold,
+            'far': far,
+            'frr': frr,
+            'f1': f1,
+            'accuracy': accuracy,
+            'precision': precision,
+            'recall': recall,
+            'tp': int(tp),
+            'fp': int(fp),
+            'tn': int(tn),
+            'fn': int(fn)
         }
     
     def print_summary(self):

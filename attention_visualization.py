@@ -375,8 +375,10 @@ class AttentionVisualizer:
                 self.display_temporal_focus(audio_file, None, title, save_to, sr)
                 return
             
-            # Create time axis
-            times = librosa.frames_to_time(np.arange(len(attention_weights)), sr=sr)
+            # Create time axis based on actual audio duration and attention frame count
+            y, _ = librosa.load(audio_file, sr=sr)
+            total_duration = len(y) / sr
+            times = np.linspace(0, total_duration, len(attention_weights))
             
             # Create figure with spectrogram and attention
             fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8), gridspec_kw={'height_ratios': [3, 1]})

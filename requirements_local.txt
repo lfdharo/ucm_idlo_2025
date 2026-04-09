@@ -10,3 +10,5 @@ torch
 torchaudio
 seaborn
 coqui-tts[languages]
+flash-attn
+qwen-tts

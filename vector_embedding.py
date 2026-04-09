@@ -141,14 +141,15 @@ def exctract_vector_embedding(audio_input: str, model_name: str, model: Optional
     elif model_name == 'SpeechBrain':
         signal, fs = librosa.load(audio_input, sr=44100)
         signal = torch.from_numpy(librosa.resample(signal, orig_sr=fs, target_sr=16000))
-        vector_prediction = model.encode_batch(signal)[0].numpy()
+        signal = signal.to(model.device)
+        vector_prediction = model.encode_batch(signal)[0].cpu().numpy()
 
     elif model_name == 'Whisper':
         MAX_INPUT_LENGTH = 16000 * 30
         signal, fs = librosa.load(audio_input, sr=44100)
         sample = librosa.resample(signal, orig_sr=fs, target_sr=16000)
         sample_batch = [sample[i:i + MAX_INPUT_LENGTH] for i in range(0, len(sample), MAX_INPUT_LENGTH)]
-        vector_prediction = model(sample_batch, sampling_rate=16000, return_tensors="pt").input_features[0].numpy()
+        vector_prediction = model(sample_batch, sampling_rate=16000, return_tensors="pt").input_features[0].cpu().numpy()
         vector_prediction = np.reshape(np.asarray(np.mean(vector_prediction, axis=1)), (1, -1))
 
     else:

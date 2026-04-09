@@ -69,6 +69,9 @@ class TTSSpoofingGenerator:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.sample_rate = 16000  # Modern models use 16kHz
         self._initialized = False
+        
+        # Initialize TTS immediately on construction
+        self._init_tts()
     
     def _init_tts(self):
         """Lazy initialize TTS - try system-based first, then ML models"""
