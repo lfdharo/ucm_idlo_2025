@@ -1,22 +1,19 @@
 """
 TTS-Based Speaker Spoofing Module
 
-Generates synthetic speech for evaluating speaker identification robustness:
-- Modern lightweight TTS using 2024-2025 HuggingFace models
-- Models: Kokoro-82M, Qwen3-TTS, Fish Audio, ParlerTTS
-- Controlled spoofing attempts with template variations
-- Synthetic batch generation for spoofing detection evaluation
+Generates synthetic speech for evaluating speaker identification robustness using:
+- Qwen3TTS: High-quality voice cloning with prompt caching optimization
+- CoquiTTS: Flexible fallback supporting both TTS and cloning
+
+Features:
+- Controlled spoofing attempts with multiple text templates (Spanish)
+- Voice cloning: Generate synthetic speaker attempts matching reference voice
+- Batch generation: Create multiple variations for robustness testing
 - Comparison metrics: Real vs Synthetic speaker verification rates
 
 Forensic Use Case:
 Students can use this module to test if their speaker ID system correctly
-rejects or accepts synthetic attempts of an enrolled speaker using TTS synthesis.
-
-Note: Uses lightweight models that work on CPU
-- Kokoro-82M: 82M params, ultra-fast, excellent for CPU-only
-- Qwen3-TTS: 1.7B, best features/quality balance
-- Fish Audio: 500M-5B variants, 13+ languages
-- ParlerTTS: 900M, minimal multilingual
+rejects or accepts synthetic attempts of an enrolled speaker.
 
 AUTHOR: Luis F. D'Haro
 DATE: Apr 2026
@@ -30,6 +27,7 @@ from typing import Dict, List, Tuple, Optional
 import json
 import librosa
 import soundfile as sf
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +55,10 @@ class TTSSpoofingGenerator:
         
         Args:
             model: TTS model to use:
-                - 'simple': Fast mock/espeak (✓ Works immediately, recommended)
-                - 'bark': HuggingFace Bark 100MB (slow on CPU, good quality if GPU available)
-                - 'qwen3-mini': 600MB lightweight version (requires GPU)
-                - 'qwen3': Full 1.7B version (best quality, requires GPU)
-            use_gpu: Use GPU if available (recommended for bark/qwen3)
+                - 'simple': Auto-select (tries Qwen3TTS for cloning, CoquiTTS for TTS)
+                - 'qwen3tts': Qwen3TTS voice cloning (GPU required)
+                - 'coqui': CoquiTTS (supports both TTS and cloning)
+            use_gpu: Use GPU if available (recommended)
         """
         self.tts = None
         self.tts_model = model
@@ -74,21 +71,35 @@ class TTSSpoofingGenerator:
         self._init_tts()
     
     def _init_tts(self):
-        """Lazy initialize TTS - try system-based first, then ML models"""
+        """Initialize TTS - supports Qwen3TTS (cloning) and CoquiTTS (fallback)"""
         if self._initialized:
             return
         
-        # Priority 1: SimpleTTS
-        if self.tts_model == 'simple' or self.tts_model in ['espeak', 'pyttsx3', 'mock', 'qwen3tts']:
-            try:
-                from simple_tts import SimpleTTS
-                backend = 'auto' if self.tts_model == 'simple' else self.tts_model
-                self.tts = SimpleTTS(backend=backend)
-                self._initialized = True
-                self.logger.info(f"Initialized SimpleTTS (backend: {self.tts.available_backend})")
-                return
-            except Exception as e:
-                self.logger.warning(f"SimpleTTS failed: {e}")
+        try:
+            from simple_tts import SimpleTTS
+            
+            # Map model names to SimpleTTS backends
+            backend_map = {
+                'simple': 'auto',  # Auto-select best available
+                'qwen3tts': 'qwen3tts',
+                'qwen3': 'qwen3tts',
+                'coqui': 'coqui',
+            }
+            
+            backend = backend_map.get(self.tts_model, 'auto')
+            device = 'cuda:0' if (self.use_gpu and torch.cuda.is_available()) else 'cpu'
+            
+            self.tts = SimpleTTS(backend=backend, device=device)
+            self._initialized = True
+            
+            if self.tts.available_backend:
+                self.logger.info(f"✓ TTS initialized: {self.tts.available_backend}")
+            else:
+                self.logger.error("✗ TTS initialization failed - no backend available")
+                
+        except Exception as e:
+            self.logger.error(f"TTS initialization error: {e}")
+            self._initialized = False
         
     
     # ============================================================
@@ -173,7 +184,8 @@ class TTSSpoofingGenerator:
                                   speaker_wav: str,
                                   output_dir: str = './synthetic_speakers/',
                                   language: str = 'es',
-                                  difficulty: str = 'medium') -> Dict:
+                                  difficulty: str = 'medium',
+                                  ref_text: Optional[str] = None) -> Dict:
         """
         Generate multiple synthetic utterances for a speaker using voice cloning
         
@@ -183,6 +195,8 @@ class TTSSpoofingGenerator:
             output_dir: Where to save synthetic audio
             language: Language code (default 'es' for Spanish)
             difficulty: 'easy', 'medium', 'hard', 'expert'
+            ref_text: Optional text corresponding to speaker_wav (for better cloning).
+                      If not provided, uses a generic reference text.
             
         Returns:
             Dictionary with generation metadata and file paths
@@ -197,9 +211,15 @@ class TTSSpoofingGenerator:
         speaker_dir = os.path.join(output_dir, speaker_name, 'synthetic')
         os.makedirs(speaker_dir, exist_ok=True)
         
+        # Default reference text if not provided
+        # This is a generic text that should work for any speaker
+        if ref_text is None:
+            ref_text = "Hola, soy el locutor de referencia para este sistema de clonación de voz."
+        
         metadata = {
             'speaker': speaker_name,
             'reference_wav': speaker_wav,
+            'reference_text': ref_text,
             'difficulty': difficulty,
             'language': language,
             'generated_files': [],
@@ -243,11 +263,14 @@ class TTSSpoofingGenerator:
                     f'{speaker_name}_synthetic_{idx:03d}.wav'
                 )
                 
-                # Generate TTS speech (not voice cloning - standard TTS synthesis)
+                # Generate cloned speech using speaker_wav as reference
+                # This uses voice cloning to match the reference speaker's voice
                 success = self.tts.generate_speech(
                     text=text,
                     output_file=output_file,
-                    language=language
+                    language=language,
+                    ref_audio=speaker_wav,  # Reference speaker for cloning
+                    ref_text=ref_text  # Text corresponding to reference audio
                 )
                 
                 # Verify generation and get duration

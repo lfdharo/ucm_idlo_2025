@@ -560,46 +560,46 @@ def tts_spoofing_example(speaker_id='SPK1'):
     """
     Example 13: TTS-Based Spoofing Robustness Evaluation
     
-    Demonstrates synthetic speech generation to evaluate if the speaker 
+    Demonstrates voice cloning to evaluate if the speaker 
     identification system can detect when someone tries to spoof an enrolled 
-    speaker's voice using text-to-speech synthesis.
+    speaker's voice using TTS-based voice cloning.
     
-    This is critical for forensic assessment: Can synthetic speech fool the system?
+    This is critical for forensic assessment: Can cloned speech fool the system?
     
     Available TTS backends:
-    - 'simple' (DEFAULT): Instant mock/espeak, no model downloads 
+    - 'qwen3tts': High-quality voice cloning (GPU recommended)
+    - 'coqui': Flexible TTS - supports both regular TTS and voice cloning
 
     """
     print("\n" + "="*70)
     print("EXAMPLE 13: TTS-Based Spoofing Robustness Evaluation")
     print("="*70)
-    print("Purpose: Test if speaker ID is robust against synthetic speech")
-    print("Method: Generate synthetic speaker voice using TTS\n")
+    print("Purpose: Test if speaker ID is robust against cloned speech")
+    print("Method: Generate cloned speaker voice using TTS voice cloning\n")
     
     from tts_spoofing import TTSSpoofingGenerator
     from easy_interface import SimpleSpeakerID
     import os
     
-    # Initialize with SimpleTTS with error handling
+    # Initialize with TTS spoofing generator with error handling
     print("Initializing TTS spoofing generator...")
     try:
-        # Use 'simple' backend (most reliable, uses espeak/pyttsx3)
+        # Use 'simple' backend (auto-select: Qwen3TTS for cloning, CoquiTTS fallback)
         generator = TTSSpoofingGenerator(model='simple', use_gpu=True)
         if generator.tts is not None:
-            backend_name = getattr(generator.tts, 'available_backend', 'simple')
+            backend_name = generator.tts.available_backend
             print(f"✓ TTS backend: {backend_name}\n")
         else:
-            print("⚠ Warning: TTS not fully initialized, using fallback\n")
+            print("⚠ Warning: TTS not fully initialized\n")
     except Exception as e:
         print(f"✗ TTS initialization error: {e}")
         print("  Falling back to demonstration mode...\n")
         generator = None
     
     models_info = {
-        'simple': 'Mock/espeak (instant, ✓ recommended)',
-        'bark': 'HuggingFace Bark (good quality, requires GPU)',
-        'qwen3-mini': 'Lightweight version (requires GPU)',
-        'qwen3': 'Full version (best quality, 1.7B param, GPU only)'
+        'qwen3tts': 'Qwen3TTS voice cloning (best quality, GPU recommended)',
+        'coqui': 'CoquiTTS (XTTS v2) - flexible, supports cloning and TTS',
+        'simple': 'Auto-select best available backend (✓ recommended)'
     }
     
     print("="*70)
