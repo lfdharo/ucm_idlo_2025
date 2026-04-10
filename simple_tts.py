@@ -192,17 +192,38 @@ class SimpleTTS:
             self.logger.error(f"pyttsx3 generation failed: {e}")
             return False
     
-    def _generate_qwen3tts(self, text: str, output_file: str, language: str, speed: float, ref_audio: str, ref_text: str) -> bool:
-        """Generate using Qwen3TTSModel (if available)"""
+    def _generate_qwen3tts(self, text: str, output_file: str, language: str, speed: float, ref_audio: str = None, ref_text: str = None) -> bool:
+        """Generate using Qwen3TTSModel (if available)
+        
+        Args:
+            text: Text to synthesize
+            output_file: Output WAV file path
+            language: Language code
+            speed: Speech speed (currently unused for Qwen3TTS)
+            ref_audio: Optional reference audio file for voice cloning
+            ref_text: Optional reference text for voice cloning
+            
+        Returns:
+            True if successful
+        """
         try:
             from qwen_tts import Qwen3TTSModel
             import soundfile as sf
-            wavs, sr = self.model.generate_voice_clone(
-                text=text,
-                language=language,
-                ref_audio=ref_audio,
-                ref_text=ref_text,  # Using input text as reference text for simplicity
-            )
+            
+            # If reference audio and text are provided, use voice cloning
+            if ref_audio is not None and ref_text is not None:
+                wavs, sr = self.model.generate_voice_clone(
+                    text=text,
+                    language=language,
+                    ref_audio=ref_audio,
+                    ref_text=ref_text,
+                )
+            else:
+                # Fallback: use regular generation without cloning
+                # If model supports regular generation, use it
+                # Otherwise, fallback to espeak/mock
+                self.logger.debug("Voice cloning ref_audio/ref_text not provided, falling back to espeak")
+                return self._generate_espeak(text, output_file, language, speed)
             
             sf.write(output_file, wavs[0], sr)
             self.logger.debug(f"Generated using Qwen3TTS: {output_file}")
