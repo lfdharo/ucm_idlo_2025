@@ -218,9 +218,9 @@ class SimpleTTS:
             # Generate using cached prompt
             voice_prompt = self.qwen_voice_prompt_cache[ref_audio_hash]
             wavs, sr = self.qwen_model.generate_voice_clone(
-                text=[text],
-                language=[language],
-                voice_clone_prompt=[voice_prompt],
+                text=text,
+                language=language,
+                voice_clone_prompt=voice_prompt,
             )
             
             # Save output

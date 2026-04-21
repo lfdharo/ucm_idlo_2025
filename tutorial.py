@@ -556,7 +556,7 @@ def advanced_data_augmentation_example(speaker_id='SPK1'):
     print("="*70 + "\n")
 
 
-def tts_spoofing_example(speaker_id='SPK1'):
+def tts_spoofing_example(speaker_id='SPK1', reference_file=None, ref_text=None):
     """
     Example 13: TTS-Based Spoofing Robustness Evaluation
     
@@ -636,7 +636,10 @@ def tts_spoofing_example(speaker_id='SPK1'):
     print("4. GENERATION EXAMPLE:")
     print("="*70)
     
-    reference_file = f'./enrollment/{speaker_id}/{speaker_id}_0001.wav'
+    if reference_file is None:
+        reference_file = f'./enrollment/{speaker_id}/{speaker_id}_0001.wav'
+        ref_text = "ven aquí Watson"
+
     if not os.path.exists(reference_file):
         print(f"⚠️  Enrollment file not found: {reference_file}")
         print(f"     Expected: ./enrollment/SPEAKER/SPEAKER_*.wav")
@@ -650,8 +653,9 @@ def tts_spoofing_example(speaker_id='SPK1'):
         speaker_name=f'{speaker_id}_SPOOFED',
         speaker_wav=reference_file,
         output_dir='./synthetic_speakers/',
-        language='es',
-        difficulty='medium'
+        language='spanish',
+        difficulty='medium',
+        ref_text=ref_text
     )
     
     print(f"\n✓ Generated: {metadata['generation_stats']['successful']} files")
@@ -749,12 +753,12 @@ if __name__ == "__main__":
     # Run Example 13: TTS-based spoofing robustness evaluation
     # Tests if system can detect voice cloning attacks
     # Note: Comment in to run (requires TTS models and may need GPU)
-    tts_spoofing_example(speaker_id='SPK1')
+    tts_spoofing_example(speaker_id='SPK1', reference_file='./enrollment/SPK1/SPK1_0001.wav', ref_text="ven aquí Watson")
    
     from tts_option import TTSOption
     # Create TTS clone voice
     tts_models = TTSOption()
-    tts_models.create_tts_clone(message="Esto es una prueba de voz clonada.", model_voice="./test/SPK1_A.wav", output_file_path="./test/SPK1_A_CLONED.wav", language="es")
+    tts_models.create_tts_clone(message="Esto es una prueba de voz clonada.", model_voice="./test/SPK1_A.wav", output_file_path="./test/SPK1_A_CLONED.wav", language="spanish")
     basic_usage_example(file_to_identify='./test/SPK1_A_CLONED.wav', model_name='wavLM')
 
     # Create TTS voice
