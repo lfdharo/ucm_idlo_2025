@@ -217,6 +217,7 @@ class SimpleTTS:
                 self.logger.debug("Using cached voice prompt")
             
             # Generate using cached prompt
+            self.logger.debug(f"Generating cloned speech with Qwen3TTS from {ref_audio} with text: {text} and language: {language} to {output_file}")
             voice_prompt = self.qwen_voice_prompt_cache[ref_audio_hash]
             wavs, sr = self.qwen_model.generate_voice_clone(
                 text=text,
