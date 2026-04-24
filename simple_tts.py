@@ -43,6 +43,7 @@ class SimpleTTS:
         self.backend = backend
         self.sample_rate = 16000
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(logging.DEBUG)
         self.available_backend = None
         self.device = device or ('cuda:0' if torch.cuda.is_available() else 'cpu')
         

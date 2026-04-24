@@ -64,6 +64,7 @@ class TTSSpoofingGenerator:
         self.tts_model = model
         self.use_gpu = use_gpu
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(logging.DEBUG)
         self.sample_rate = 16000  # Modern models use 16kHz
         self._initialized = False
         
