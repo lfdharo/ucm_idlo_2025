@@ -654,7 +654,7 @@ def tts_spoofing_example(speaker_id='SPK1', reference_file=None, ref_text=None):
         speaker_wav=reference_file,
         output_dir='./synthetic_speakers/',
         language='spanish',
-        difficulty='medium',
+        difficulty='easy',
         ref_text=ref_text
     )
     
@@ -758,7 +758,7 @@ if __name__ == "__main__":
     from tts_option import TTSOption
     # Create TTS clone voice
     tts_models = TTSOption()
-    tts_models.create_tts_clone(message="Esto es una prueba de voz clonada.", model_voice="./test/SPK1_A.wav", output_file_path="./test/SPK1_A_CLONED.wav", language="spanish")
+    tts_models.create_tts_clone(message="Esto es una prueba de voz clonada.", model_voice="./test/SPK1_A.wav", output_file_path="./test/SPK1_A_CLONED.wav", language="es")
     basic_usage_example(file_to_identify='./test/SPK1_A_CLONED.wav', model_name='wavLM')
 
     # Create TTS voice

@@ -49,7 +49,7 @@ class TTSSpoofingGenerator:
     - Mixed: Variety of phonetically diverse sentences
     """
     
-    def __init__(self, model: str = 'simple', use_gpu: bool = True):
+    def __init__(self, model: str = 'simple', use_gpu: bool = True, x_vector_only: bool = True):
         """
         Initialize TTS for spoofing generation
         
@@ -59,10 +59,14 @@ class TTSSpoofingGenerator:
                 - 'qwen3tts': Qwen3TTS voice cloning (GPU required)
                 - 'coqui': CoquiTTS (supports both TTS and cloning)
             use_gpu: Use GPU if available (recommended)
+            x_vector_only: If True, uses only speaker embedding (faster, no text concat).
+                          If False, uses ICL mode (better quality but may concat text).
+                          Recommended: True for spoofing to avoid text concatenation.
         """
         self.tts = None
         self.tts_model = model
         self.use_gpu = use_gpu
+        self.x_vector_only = x_vector_only  # NEW: control ICL vs x-vector only
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(logging.DEBUG)
         self.sample_rate = 16000  # Modern models use 16kHz
@@ -90,11 +94,13 @@ class TTSSpoofingGenerator:
             backend = backend_map.get(self.tts_model, 'auto')
             device = 'cuda:0' if (self.use_gpu and torch.cuda.is_available()) else 'cpu'
             
-            self.tts = SimpleTTS(backend=backend, device=device)
+            # Pass x_vector_only_mode to SimpleTTS
+            self.tts = SimpleTTS(backend=backend, device=device, x_vector_only_mode=self.x_vector_only)
             self._initialized = True
             
+            mode_desc = "x-vector only" if self.x_vector_only else "ICL"
             if self.tts.available_backend:
-                self.logger.info(f"✓ TTS initialized: {self.tts.available_backend}")
+                self.logger.info(f"✓ TTS initialized: {self.tts.available_backend} (mode: {mode_desc})")
             else:
                 self.logger.error("✗ TTS initialization failed - no backend available")
                 
@@ -252,6 +258,7 @@ class TTSSpoofingGenerator:
         self.logger.info(f"🎙️ Generating {len(texts_to_generate)} synthetic utterances for {speaker_name}")
         self.logger.info(f"    Reference: {speaker_wav}")
         self.logger.info(f"    Difficulty: {difficulty}")
+        self.logger.info(f"    Mode: {'x-vector only' if self.x_vector_only else 'ICL'}")
         
         # Initialize TTS on first use (lazy loading)
         self._init_tts()
@@ -266,12 +273,14 @@ class TTSSpoofingGenerator:
                 
                 # Generate cloned speech using speaker_wav as reference
                 # This uses voice cloning to match the reference speaker's voice
+                # Pass x_vector_only to control ICL vs x-vector only mode
                 success = self.tts.generate_speech(
                     text=text,
                     output_file=output_file,
                     language=language,
                     ref_audio=speaker_wav,  # Reference speaker for cloning
-                    ref_text=ref_text  # Text corresponding to reference audio
+                    ref_text=ref_text if not self.x_vector_only else None,  # Only needed for ICL mode
+                    x_vector_only=self.x_vector_only  # Control mode
                 )
                 
                 # Verify generation and get duration
